@@ -208,3 +208,41 @@ ALTER TABLE medical_assessments ADD COLUMN blood_pressure VARCHAR(20) NULL AFTER
 
 ALTER TABLE medical_assessments ADD COLUMN medical_notes TEXT NULL AFTER blood_pressure;
 
+
+
+
+
+-- 1. Insert Core Exercises
+INSERT INTO exercises (name, category, impact_level, muscle_groups, description, equipment_needed) VALUES
+('Barbell Deadlift', 'strength', 'high', 'hamstrings, lower back, glutes', 'Heavy compound lifting', 'barbell'),
+('Barbell Squat', 'strength', 'high', 'quads, glutes, core', 'Heavy compound lifting', 'barbell'),
+('Overhead Press', 'strength', 'medium', 'shoulders, triceps', 'Vertical pushing', 'barbell'),
+('Barbell Row', 'strength', 'medium', 'back, biceps', 'Horizontal pulling', 'barbell'),
+('Box Jumps', 'cardio', 'high', 'legs, calves', 'High-impact plyometrics', 'box'),
+('Sprint Intervals', 'cardio', 'high', 'full body', 'Max-effort sprints', 'treadmill'),
+('Zone-2 Cardio', 'cardio', 'low', 'heart', 'Steady state cardio', 'treadmill'),
+('Resistance Machines', 'strength', 'low', 'various', 'Supported lifting', 'machines'),
+('Chest-Supported Rows', 'strength', 'low', 'back', 'Spine-safe pulling', 'machine'),
+('Swimming', 'cardio', 'low', 'full body', 'Zero-impact cardio', 'pool'),
+('Planks', 'strength', 'low', 'core', 'Isometric core', 'none'),
+('Elliptical', 'cardio', 'low', 'legs', 'Low-impact cardio', 'elliptical');
+
+-- 2. Insert DSS Contraindication Rules (The Brain)
+-- Hypertension Rules
+INSERT INTO dss_rules (condition_name, exercise_id, rule_type, reason, alternative_exercise_id, severity_threshold) VALUES
+('hypertension', (SELECT id FROM exercises WHERE name='Barbell Deadlift'), 'BLOCK', 'Heavy compound lifts > 80% 1RM are contraindicated for high blood pressure.', (SELECT id FROM exercises WHERE name='Resistance Machines'), 3),
+('hypertension', (SELECT id FROM exercises WHERE name='Barbell Squat'), 'BLOCK', 'Heavy compound lifts increase dangerous thoracic pressure.', (SELECT id FROM exercises WHERE name='Zone-2 Cardio'), 3),
+('hypertension', (SELECT id FROM exercises WHERE name='Sprint Intervals'), 'WARN', 'Max-effort sprints may spike BP. Monitor closely.', NULL, 1);
+
+-- Lumbar Disc Herniation Rules
+INSERT INTO dss_rules (condition_name, exercise_id, rule_type, reason, alternative_exercise_id, severity_threshold) VALUES
+('lumbar_disc', (SELECT id FROM exercises WHERE name='Barbell Deadlift'), 'BLOCK', 'Severe spinal loading is prohibited for disc injuries.', (SELECT id FROM exercises WHERE name='Chest-Supported Rows'), 1),
+('lumbar_disc', (SELECT id FROM exercises WHERE name='Overhead Press'), 'BLOCK', 'Axial spinal compression is contraindicated.', (SELECT id FROM exercises WHERE name='Swimming'), 1),
+('lumbar_disc', (SELECT id FROM exercises WHERE name='Barbell Row'), 'BLOCK', 'Unsupported forward flexion under load.', (SELECT id FROM exercises WHERE name='Planks'), 1);
+
+-- Knee Injury Rules
+INSERT INTO dss_rules (condition_name, exercise_id, rule_type, reason, alternative_exercise_id, severity_threshold) VALUES
+('knee_injury', (SELECT id FROM exercises WHERE name='Box Jumps'), 'BLOCK', 'High-impact plyometrics will aggravate knee joint.', (SELECT id FROM exercises WHERE name='Swimming'), 2),
+('knee_injury', (SELECT id FROM exercises WHERE name='Sprint Intervals'), 'BLOCK', 'High-impact running is contraindicated.', (SELECT id FROM exercises WHERE name='Elliptical'), 2),
+('knee_injury', (SELECT id FROM exercises WHERE name='Barbell Squat'), 'WARN', 'Ensure proper tracking of the patella. Keep weight light.', NULL, 1);
+
