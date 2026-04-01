@@ -202,3 +202,6 @@ CREATE TABLE progress_logs (
 INSERT INTO packages (name, price_gbp, duration_months, consultation_count, features, is_active) VALUES 
 ('Standard Plan', 29.99, 1, 1, '["Access to gym", "1 Doctor Consultation/mo", "Basic Classes"]', 1),
 ('Premium Medical Plan', 59.99, 1, 3, '["Priority gym access", "3 Doctor Consultations/mo", "All DSS-Approved Classes"]', 1);
+
+-- blood pressure
+ALTER TABLE medical_assessments ADD COLUMN blood_pressure VARCHAR(20) NULL AFTER bmi;
