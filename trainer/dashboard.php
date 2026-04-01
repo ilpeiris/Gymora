@@ -57,10 +57,13 @@ require_once '../includes/header.php';
                                     <?php endif; ?>
                                 </td>
                                 <td class="align-middle">
-                                    <a href="create_plan.php?user_id=<?= $client['id'] ?>" class="btn btn-sm btn-outline-primary <?= !$client['latest_bmi'] ? 'disabled' : '' ?>">
-                                        Create Workout Plan
-                                    </a>
-                                </td>
+    <a href="member_view.php?user_id=<?= $client['id'] ?>" class="btn btn-sm btn-outline-dark">
+        View Profile
+    </a>
+    <a href="create_plan.php?user_id=<?= $client['id'] ?>" class="btn btn-sm btn-outline-primary <?= !$client['latest_bmi'] ? 'disabled' : '' ?>">
+        Build Plan
+    </a>
+</td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>

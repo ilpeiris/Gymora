@@ -253,3 +253,17 @@ INSERT INTO classes (name, trainer_id, datetime, duration_minutes, capacity, imp
 ('Heavy Lifting Club', (SELECT id FROM users WHERE role='trainer' LIMIT 1), DATE_ADD(NOW(), INTERVAL 3 DAY), 60, 10, 'high', '["hypertension", "lumbar_disc"]', 'Weight Room', 'Focus on heavy compound lifts like deadlifts and squats.'),
 ('Aqua Aerobics', (SELECT id FROM users WHERE role='trainer' LIMIT 1), DATE_ADD(NOW(), INTERVAL 4 DAY), 45, 25, 'low', '[]', 'Pool', 'Zero-impact cardio in the pool.'),
 ('CrossFit Intro', (SELECT id FROM users WHERE role='trainer' LIMIT 1), DATE_ADD(NOW(), INTERVAL 5 DAY), 60, 12, 'high', '["knee_injury", "lumbar_disc", "hypertension"]', 'Studio 1', 'Intense functional fitness combining lifting and gymnastics.');
+
+
+-- 
+CREATE TABLE IF NOT EXISTS workout_exercises (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    plan_id INT NOT NULL,
+    exercise_id INT NOT NULL,
+    sets INT,
+    reps VARCHAR(20),
+    day_of_week ENUM('Mon','Tue','Wed','Thu','Fri','Sat','Sun'),
+    dss_approved TINYINT(1) DEFAULT 0,
+    FOREIGN KEY (plan_id) REFERENCES workout_plans(id) ON DELETE CASCADE,
+    FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
+);
