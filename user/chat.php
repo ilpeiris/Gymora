@@ -87,6 +87,6 @@ require_once '../includes/header.php';
     </div>
 </div>
 
-<script src="<?= BASE_URL ?>assets/js/chat.js"></script>
+<script src="<?= BASE_URL ?>assets/js/chat.js?v=<?= time() ?>"></script>
 
 <?php require_once '../includes/footer.php'; ?>

@@ -29,47 +29,65 @@ function loadChat(userId, userName) {
 function fetchMessages() {
     if (currentChatUserId === 0) return;
 
-    fetch(`../api/get_messages.php?other_user_id=${currentChatUserId}&last_message_id=${lastMessageId}`)
-        .then(response => response.json())
+  // added a unique timestamp (&t=...) and {cache: 'no-store'} to completely block browser caching
+    const timestamp = new Date().getTime();
+    fetch(`../api/get_messages.php?other_user_id=${currentChatUserId}&last_message_id=${lastMessageId}&t=${timestamp}`, { cache: "no-store" })
+
+    
+        .then(async response => {
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                const textError = await response.text();
+                throw new Error("API returned non-JSON. Output was: " + textError.substring(0, 100));
+            }
+            return response.json();
+        })
         .then(data => {
-            if (data.status === 'success' && data.messages.length > 0) {
+            if (data.status === 'success') {
                 const chatBox = document.getElementById('chat-box');
                 
-                // Clear loading text if it's the first load
-                if (lastMessageId === 0) chatBox.innerHTML = ''; 
+                if (data.messages && data.messages.length > 0) {
+                    if (lastMessageId === 0) chatBox.innerHTML = ''; // Clear loading text
 
-                data.messages.forEach(msg => {
-                    const isMine = msg.is_mine;
-                    const bubbleClass = isMine ? 'bg-primary text-white float-end' : 'bg-light border float-start';
-                    const alignClass = isMine ? 'text-end' : 'text-start';
-
-                    const msgHTML = `
-                        <div class="clearfix mb-3">
-                            <div class="p-3 rounded-3 shadow-sm ${bubbleClass}" style="max-width: 75%;">
-                                ${msg.content}
-                                <div class="small mt-1 ${isMine ? 'text-white-50' : 'text-muted'}">${msg.time_formatted}</div>
+                    data.messages.forEach(msg => {
+                        const isMine = msg.is_mine;
+                        const bubbleClass = isMine ? 'bg-primary text-white float-end' : 'bg-light border float-start';
+                        
+                        const msgHTML = `
+                            <div class="clearfix mb-3">
+                                <div class="p-3 rounded-3 shadow-sm ${bubbleClass}" style="max-width: 75%;">
+                                    ${msg.content}
+                                    <div class="small mt-1 ${isMine ? 'text-white-50' : 'text-muted'}">${msg.time_formatted}</div>
+                                </div>
                             </div>
-                        </div>
-                    `;
-                    chatBox.innerHTML += msgHTML;
-                    lastMessageId = Math.max(lastMessageId, msg.id);
-                });
-
-                // Scroll to bottom
-                chatBox.scrollTop = chatBox.scrollHeight;
-            } else if (lastMessageId === 0 && data.messages.length === 0) {
-                document.getElementById('chat-box').innerHTML = '<div class="text-center text-muted mt-5">No messages yet. Start the conversation!</div>';
+                        `;
+                        chatBox.innerHTML += msgHTML;
+                        lastMessageId = Math.max(lastMessageId, msg.id);
+                    });
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                } else if (lastMessageId === 0) {
+                    chatBox.innerHTML = '<div class="text-center text-muted mt-5">No messages yet. Start the conversation!</div>';
+                }
+            } else {
+                document.getElementById('chat-box').innerHTML = `<div class="alert alert-danger m-3">Server Error: ${data.message}</div>`;
             }
         })
-        .catch(error => console.error('Error fetching messages:', error));
+        .catch(error => {
+            if (lastMessageId === 0) {
+                document.getElementById('chat-box').innerHTML = `<div class="alert alert-danger m-3 fw-bold">System Error: Could not load chat.</div><div class="bg-dark text-danger p-2 small font-monospace">${error.message}</div>`;
+            }
+            console.error('AJAX Parse Error:', error);
+        });
 }
 
 // Handle sending a new message
 document.addEventListener("DOMContentLoaded", function() {
-    const msgForm = document.getElementById('message-form');
+    // FIX 1: Target the actual <form> tag, not the <div> wrapper!
+    const msgForm = document.getElementById('message-input-form');
+    
     if(msgForm) {
         msgForm.addEventListener('submit', function(e) {
-            e.preventDefault();
+            e.preventDefault(); // Stop the page from reloading!
             
             const contentInput = document.getElementById('message-input');
             const content = contentInput.value.trim();
@@ -83,7 +101,8 @@ document.addEventListener("DOMContentLoaded", function() {
             // Clear input immediately for good UX
             contentInput.value = '';
             
-            fetch('../api/send_message.php', {
+            // FIX 2: Call send_messages.php (plural) to match your uploaded file!
+            fetch('../api/send_messages.php', {
                 method: 'POST',
                 body: formData
             })
@@ -92,8 +111,11 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (data.status === 'success') {
                     // Instantly fetch the message that just sent so it appears on screen
                     fetchMessages();
+                } else {
+                    console.error("Failed to send message:", data.message);
                 }
-            });
+            })
+            .catch(err => console.error("Network error on send:", err));
         });
     }
 });
