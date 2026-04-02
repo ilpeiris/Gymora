@@ -7,6 +7,11 @@ require_once '../config/constants.php';
 requireRole(ROLE_USER);
 $user_id = $_SESSION['user_id'];
 
+// Fetch the history logs for the table at the bottom
+$historyStmt = $pdo->prepare("SELECT log_date, weight_kg, bmi, body_fat_pct, notes FROM progress_logs WHERE user_id = ? ORDER BY log_date DESC");
+$historyStmt->execute([$user_id]);
+$historyLogs = $historyStmt->fetchAll();
+
 require_once '../includes/header.php';
 ?>
 
@@ -22,7 +27,7 @@ require_once '../includes/header.php';
 
 <div class="row">
     <div class="col-md-4 mb-4">
-        <div class="card shadow-sm border-success">
+        <div class="card shadow-sm border-success h-100">
             <div class="card-header bg-success text-white fw-bold">
                 Log Today's Stats
             </div>
@@ -52,7 +57,7 @@ require_once '../includes/header.php';
         </div>
     </div>
 
-    <div class="col-md-8">
+    <div class="col-md-8 mb-4">
         <div class="card shadow-sm border-dark mb-4">
             <div class="card-header bg-dark text-white fw-bold">
                 Weight Trend (kg)
@@ -73,11 +78,52 @@ require_once '../includes/header.php';
     </div>
 </div>
 
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card shadow-sm border-info">
+            <div class="card-header bg-info text-white fw-bold">
+                <i class="bi bi-journal-text"></i> Detailed History & Notes
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Weight (kg)</th>
+                                <th>BMI</th>
+                                <th>Body Fat %</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach($historyLogs as $log): ?>
+                            <tr>
+                                <td class="align-middle fw-bold"><?= date('M j, Y', strtotime($log['log_date'])) ?></td>
+                                <td class="align-middle"><?= htmlspecialchars($log['weight_kg']) ?></td>
+                                <td class="align-middle text-primary"><?= htmlspecialchars($log['bmi']) ?></td>
+                                <td class="align-middle"><?= $log['body_fat_pct'] ? htmlspecialchars($log['body_fat_pct']) . '%' : '<span class="text-muted">-</span>' ?></td>
+                                <td class="align-middle text-muted small"><?= nl2br(htmlspecialchars($log['notes'])) ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                            
+                            <?php if(count($historyLogs) == 0): ?>
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">No logs recorded yet. Add your first log above!</td>
+                            </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 let weightChartInstance = null;
 let bmiChartInstance = null;
 
-// Function to fetch data and draw the charts
 function loadCharts() {
     fetch('../api/analytics.php?type=progress')
         .then(response => response.json())
@@ -92,11 +138,9 @@ function renderCharts(dates, weights, bmis) {
     const ctxWeight = document.getElementById('weightChart').getContext('2d');
     const ctxBmi = document.getElementById('bmiChart').getContext('2d');
 
-    // Destroy old charts if they exist so they don't overlap when updating
     if (weightChartInstance) weightChartInstance.destroy();
     if (bmiChartInstance) bmiChartInstance.destroy();
 
-    // Weight Chart
     weightChartInstance = new Chart(ctxWeight, {
         type: 'line',
         data: {
@@ -104,17 +148,16 @@ function renderCharts(dates, weights, bmis) {
             datasets: [{
                 label: 'Weight (kg)',
                 data: weights,
-                borderColor: '#198754', // Bootstrap Success Green
+                borderColor: '#198754', 
                 backgroundColor: 'rgba(25, 135, 84, 0.2)',
                 borderWidth: 3,
-                tension: 0.3, // Adds a slight curve to the line
+                tension: 0.3, 
                 fill: true
             }]
         },
         options: { responsive: true }
     });
 
-    // BMI Chart
     bmiChartInstance = new Chart(ctxBmi, {
         type: 'line',
         data: {
@@ -122,7 +165,7 @@ function renderCharts(dates, weights, bmis) {
             datasets: [{
                 label: 'BMI',
                 data: bmis,
-                borderColor: '#0d6efd', // Bootstrap Primary Blue
+                borderColor: '#0d6efd', 
                 backgroundColor: 'rgba(13, 110, 253, 0.2)',
                 borderWidth: 3,
                 tension: 0.3,
@@ -156,8 +199,9 @@ document.getElementById('logProgressForm').addEventListener('submit', function(e
     .then(data => {
         if (data.status === 'success') {
             alertBox.innerHTML = `<div class="alert alert-success py-2">Saved! Auto-calculated BMI: ${data.bmi}</div>`;
-            this.reset(); // Clear the form
-            loadCharts(); // Instantly redraw the charts with the new data!
+            this.reset();
+            // Automatically refresh the page after 1 second so the table updates
+            setTimeout(() => { window.location.reload(); }, 1000);
         } else {
             alertBox.innerHTML = `<div class="alert alert-danger py-2">${data.message}</div>`;
         }
@@ -168,7 +212,6 @@ document.getElementById('logProgressForm').addEventListener('submit', function(e
     });
 });
 
-// Load charts immediately when the page opens
 document.addEventListener("DOMContentLoaded", loadCharts);
 </script>
 
