@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['book_appointment'])) 
         // Parse the requested date and time
         $requested_time = date('H:i:s', strtotime($raw_datetime));
         $requested_day = date('l', strtotime($raw_datetime)); // e.g. 'Monday'
+        $requested_end_time = date('H:i:s', strtotime($raw_datetime) + 3600); // 1 hour session
         
         // 1. Check Consultation Credits (Only deduct for medical consultations)
         $userStmt = $pdo->prepare("SELECT consultations_remaining FROM users WHERE id = ?");
@@ -38,12 +39,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['book_appointment'])) 
                 WHERE staff_id = ? 
                 AND day_of_week = ? 
                 AND start_time <= ? 
-                AND end_time >= DATE_ADD(?, INTERVAL 60 MINUTE)
+                AND end_time >= ?
             ");
-            $availStmt->execute([$staff_id, $requested_day, $requested_time, $requested_time]);
+            $availStmt->execute([$staff_id, $requested_day, $requested_time, $requested_end_time]);
             
             if ($availStmt->rowCount() === 0) {
-                $error = "The selected staff member is not available on {$requested_day}s at that time. Please check their schedule.";
+                $error = "Booking Failed: The staff member is not available on {$requested_day} from " . date('g:i A', strtotime($requested_time)) . " to " . date('g:i A', strtotime($requested_end_time)) . ". Please check their displayed schedule.";
             } else {
                 // 3. Check for Conflicts (Double-Booking Prevention)
                 $conflictStmt = $pdo->prepare("
@@ -53,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['book_appointment'])) 
                 $conflictStmt->execute([$staff_id, date('Y-m-d H:i:s', strtotime($raw_datetime))]);
                 
                 if ($conflictStmt->fetchColumn() > 0) {
-                    $error = "That time slot is already booked. Please choose another time.";
+                    $error = "That exact time slot is already booked by someone else. Please choose another time.";
                 } else {
                     // All checks passed! Execute booking.
                     try {
@@ -142,19 +143,20 @@ require_once '../includes/header.php';
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    
                     <div id="scheduleDisplay"></div>
+                    
                     <div class="mb-3">
                         <label class="form-label fw-bold">Session Type</label>
-                        <select name="type" class="form-select" required>
+                        <select name="type" id="typeSelect" class="form-select" required style="background-color: #f8f9fa;">
                             <option value="medical_consultation">Medical Consultation (Uses 1 Credit)</option>
-                            <option value="training_session">Personal Training Session</option>
+                            <option value="training_session">Personal Training Session (No Credit Used)</option>
                         </select>
                     </div>
                     
                     <div class="mb-4">
                         <label class="form-label fw-bold">Date & Time</label>
                         <input type="datetime-local" name="datetime" class="form-control" required>
-                        <small class="text-muted d-block mt-1">Our test Doctor works Mon-Wed (9am-5pm). Our test Trainer works Wed-Fri (12pm-8pm).</small>
                     </div>
                     
                     <button type="submit" class="btn btn-primary w-100 fw-bold">Check Availability & Book</button>
@@ -186,14 +188,17 @@ require_once '../includes/header.php';
                                 if ($appt['status'] == 'completed') $badge_color = 'bg-success';
                                 if ($appt['status'] == 'cancelled') $badge_color = 'bg-danger';
                                 if ($is_past && $appt['status'] == 'scheduled') $badge_color = 'bg-secondary';
+                                
+                                // FIX: Display correct prefix based on role
+                                $prefix = ($appt['staff_role'] === 'doctor') ? 'Dr. ' : 'Trainer ';
                             ?>
                                 <tr class="<?= $is_past ? 'text-muted' : '' ?>">
                                     <td class="align-middle">
                                         <strong><?= date('D, M j, Y', strtotime($appt['datetime'])) ?></strong><br>
                                         <?= date('g:i A', strtotime($appt['datetime'])) ?>
                                     </td>
-                                    <td class="align-middle">
-                                        Dr/Tr. <?= htmlspecialchars($appt['staff_name']) ?>
+                                    <td class="align-middle fw-bold">
+                                        <?= $prefix . htmlspecialchars($appt['staff_name']) ?>
                                     </td>
                                     <td class="align-middle">
                                         <?= ucwords(str_replace('_', ' ', $appt['type'])) ?>
@@ -220,12 +225,22 @@ require_once '../includes/header.php';
 
 <script>
 function fetchSchedule() {
-    const staffId = document.getElementById('staffSelect').value;
+    const select = document.getElementById('staffSelect');
+    const staffId = select.value;
     const display = document.getElementById('scheduleDisplay');
+    const typeSelect = document.getElementById('typeSelect');
 
     if (staffId === "") {
         display.innerHTML = "";
         return;
+    }
+
+    // NEW FIX: Auto-select the session type so the user doesn't get confused
+    const roleText = select.options[select.selectedIndex].text;
+    if (roleText.includes('Doctor:')) {
+        typeSelect.value = 'medical_consultation';
+    } else if (roleText.includes('Trainer:')) {
+        typeSelect.value = 'training_session';
     }
 
     display.innerHTML = "<small class='text-muted'>Loading schedule...</small>";
