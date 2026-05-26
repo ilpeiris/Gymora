@@ -4,7 +4,7 @@
 ![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=flat-square&logo=mysql&logoColor=white)
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3-7952B3?style=flat-square&logo=bootstrap&logoColor=white)
 ![Chart.js](https://img.shields.io/badge/Chart.js-4.x-FF6384?style=flat-square&logo=chartdotjs&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+![License](https://img.shields.io/badge/License-GPL%20v3-blue?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=flat-square)
 
 > A full-stack PHP 8 / MySQL platform built around a deterministic Rule-Based Decision 
@@ -542,6 +542,12 @@ After running the seed files, the following test accounts are available:
 6. Open a pull request with a clear description of the change
 
 ---
+
+## Author
+
+**Isuru Lakmal Peiris**
+GitHub: [@ilpeiris](https://github.com/ilpeiris)
+LinkedIn: [linkedin.com/in/ilpeiris](https://linkedin.com/in/ilpeiris)
 
 ## License
 
